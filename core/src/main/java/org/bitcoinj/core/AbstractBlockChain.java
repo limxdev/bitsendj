@@ -838,221 +838,51 @@ public abstract class AbstractBlockChain {
     private void checkDifficultyTransitions(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         checkState(lock.isHeldByCurrentThread());
 
+    /*
+    enum DiffMode {
+        DIFF_DEFAULT = 0, // Default to invalid 0
+        DIFF_BTC     = 1, // Retarget every x blocks (Bitcoin style)
+        DIFF_KGW     = 2,
+        DIFF_KGW2    = 3,// Retarget using Kimoto Gravity Well
+        DIFF_DGW     = 4,
+        DIFF_DELTA   = 5,
+        DIFF_KGW3    = 6,
+        DIFF_NULL    = 0,// Retarget using Dark Gravity Wave v3
+    };
+    */
+
         int DiffMode = 1;
         if (params.getId().equals(NetworkParameters.ID_TESTNET)) {
-            if (storedPrev.getHeight()+1 >= 2000) { DiffMode = 4; }
+            if (storedPrev.getHeight() + 1 >= 500) { DiffMode = 3; }
+            else if (storedPrev.getHeight() + 1 >= 100) { DiffMode = 5; } 
+            else if (storedPrev.getHeight() + 1 >= 20) { DiffMode = 2; } 
+            else if (storedPrev.getHeight() + 1 >= 10) { DiffMode = 4; }
         }
         else {
-            if (storedPrev.getHeight()+1 >= 68589) { DiffMode = 4; }
-            else if (storedPrev.getHeight()+1 >= 34140) { DiffMode = 3; }
-            else if (storedPrev.getHeight()+1 >= 15200) { DiffMode = 2; }
+            if (storedPrev.getHeight() + 1 >= 139975) { DiffMode = 6; }
+            else if (storedPrev.getHeight() + 1 >= 102000) { DiffMode = 3; }
+            else if (storedPrev.getHeight() + 1 >= 101000) { DiffMode = 5; }
+            else if (storedPrev.getHeight() + 1 >= 99500) { DiffMode = 3; }
+            else if (storedPrev.getHeight() + 1 >= 95000) { DiffMode = 2; }
+            else if (storedPrev.getHeight() + 1 >= 34140) { DiffMode = 4; }
+            else if (storedPrev.getHeight() + 1 >= 15200) { DiffMode = 2; }
         }
 
-        if (DiffMode == 1) { checkDifficultyTransitions_V1(storedPrev, nextBlock); return; }
-        else if (DiffMode == 2) { checkDifficultyTransitions_V2(storedPrev, nextBlock); return;}
-        else if (DiffMode == 3) { DarkGravityWave(storedPrev, nextBlock); return;}
+        if (DiffMode == 1) { BitcoinStyleRetargeting(storedPrev, nextBlock); return; }
+        else if (DiffMode == 2) { KimotoGravityWell1(storedPrev, nextBlock); return; }
+        else if (DiffMode == 3) { KimotoGravityWell2(storedPrev, nextBlock); return; }
         else if (DiffMode == 4) { DarkGravityWave3(storedPrev, nextBlock); return; }
-
-        DarkGravityWave3(storedPrev, nextBlock);
-
-        return;
+        else if (DiffMode == 5) { KimotoGravityWell3(storedPrev, nextBlock); return; }
+        else if (DiffMode == 6) { KimotoGravityWell3(storedPrev, nextBlock); return; }
+        
+		DarkGravityWave3(storedPrev, nextBlock);
+		
+		return;
 
     }
-    private void DarkGravityWave1(StoredBlock storedPrev, Block nextBlock) {
-    /* current difficulty formula, limecoin - DarkGravity, written by Evan Duffield - evan@limecoin.io */
-        StoredBlock BlockLastSolved = storedPrev;
-        StoredBlock BlockReading = storedPrev;
-        Block BlockCreating = nextBlock;
-        //BlockCreating = BlockCreating;
-        long nBlockTimeAverage = 0;
-        long nBlockTimeAveragePrev = 0;
-        long nBlockTimeCount = 0;
-        long nBlockTimeSum2 = 0;
-        long nBlockTimeCount2 = 0;
-        long LastBlockTime = 0;
-        long PastBlocksMin = 14;
-        long PastBlocksMax = 140;
-        long CountBlocks = 0;
-        BigInteger PastDifficultyAverage = BigInteger.valueOf(0);
-        BigInteger PastDifficultyAveragePrev = BigInteger.valueOf(0);
 
-        //if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) { return bnProofOfWorkLimit.GetCompact(); }
-        if (BlockLastSolved == null || BlockLastSolved.getHeight() == 0 || (long)BlockLastSolved.getHeight() < PastBlocksMin)
-        { verifyDifficulty(params.getMaxTarget(), storedPrev, nextBlock); }
-
-        for (int i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
-            if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
-            CountBlocks++;
-
-            if(CountBlocks <= PastBlocksMin) {
-                if (CountBlocks == 1) { PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger(); }
-                else
-                {
-                    //PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev;
-                    PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger().subtract(PastDifficultyAveragePrev).divide(BigInteger.valueOf(CountBlocks)).add(PastDifficultyAveragePrev);
-
-                }
-                PastDifficultyAveragePrev = PastDifficultyAverage;
-            }
-
-            if(LastBlockTime > 0){
-                long Diff = (LastBlockTime - BlockReading.getHeader().getTimeSeconds());
-                if(Diff < 0) Diff = 0;
-                if(nBlockTimeCount <= PastBlocksMin) {
-                    nBlockTimeCount++;
-
-                    if (nBlockTimeCount == 1) { nBlockTimeAverage = Diff; }
-                    else { nBlockTimeAverage = ((Diff - nBlockTimeAveragePrev) / nBlockTimeCount) + nBlockTimeAveragePrev; }
-                    nBlockTimeAveragePrev = nBlockTimeAverage;
-                }
-                nBlockTimeCount2++;
-                nBlockTimeSum2 += Diff;
-            }
-            LastBlockTime = BlockReading.getHeader().getTimeSeconds();
-
-            //if (BlockReading->pprev == NULL)
-            try {
-                StoredBlock BlockReadingPrev = blockStore.get(BlockReading.getHeader().getPrevBlockHash());
-                if (BlockReadingPrev == null)
-                {
-                    //assert(BlockReading); break;
-                    return;
-                }
-                BlockReading = BlockReadingPrev;
-            }
-            catch(BlockStoreException x)
-            {
-                return;
-            }
-        }
-
-        BigInteger bnNew = PastDifficultyAverage;
-        if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
-            double SmartAverage = (((nBlockTimeAverage)*0.7)+((nBlockTimeSum2 / nBlockTimeCount2)*0.3));
-            if(SmartAverage < 1) SmartAverage = 1;
-            double Shift = CoinDefinition.TARGET_SPACING/SmartAverage;
-
-            long nActualTimespan = (long)((CountBlocks*CoinDefinition.TARGET_SPACING)/Shift);
-            long nTargetTimespan = (CountBlocks*CoinDefinition.TARGET_SPACING);
-            if (nActualTimespan < nTargetTimespan/3)
-                nActualTimespan = nTargetTimespan/3;
-            if (nActualTimespan > nTargetTimespan*3)
-                nActualTimespan = nTargetTimespan*3;
-
-            // Retarget
-            bnNew = bnNew.multiply(BigInteger.valueOf(nActualTimespan));
-            bnNew = bnNew.divide(BigInteger.valueOf(nTargetTimespan));
-        }
-        verifyDifficulty(bnNew, storedPrev, nextBlock);
-
-        /*if (bnNew > bnProofOfWorkLimit){
-            bnNew = bnProofOfWorkLimit;
-        }
-
-        return bnNew.GetCompact();*/
-    }
-    private void DarkGravityWave(StoredBlock storedPrev, Block nextBlock) {
-    /* current difficulty formula, limecoin - DarkGravity, written by Evan Duffield - evan@limecoin.io */
-        StoredBlock BlockLastSolved = storedPrev;
-        StoredBlock BlockReading = storedPrev;
-        Block BlockCreating = nextBlock;
-        //BlockCreating = BlockCreating;
-        long nBlockTimeAverage = 0;
-        long nBlockTimeAveragePrev = 0;
-        long nBlockTimeCount = 0;
-        long nBlockTimeSum2 = 0;
-        long nBlockTimeCount2 = 0;
-        long LastBlockTime = 0;
-        long PastBlocksMin = 14;
-        long PastBlocksMax = 140;
-        long CountBlocks = 0;
-        BigInteger PastDifficultyAverage = BigInteger.valueOf(0);
-        BigInteger PastDifficultyAveragePrev = BigInteger.valueOf(0);
-
-        //if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) { return bnProofOfWorkLimit.GetCompact(); }
-        if (BlockLastSolved == null || BlockLastSolved.getHeight() == 0 || (long)BlockLastSolved.getHeight() < PastBlocksMin)
-        { verifyDifficulty(params.getMaxTarget(), storedPrev, nextBlock); }
-
-        for (int i = 1; BlockReading != null && BlockReading.getHeight() > 0; i++) {
-            if (PastBlocksMax > 0 && i > PastBlocksMax)
-            {
-                break;
-            }
-            CountBlocks++;
-
-            if(CountBlocks <= PastBlocksMin) {
-                if (CountBlocks == 1) { PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger(); }
-                else
-                {
-                    //PastDifficultyAverage = ((CBigNum().SetCompact(BlockReading->nBits) - PastDifficultyAveragePrev) / CountBlocks) + PastDifficultyAveragePrev;
-                    PastDifficultyAverage = BlockReading.getHeader().getDifficultyTargetAsInteger().subtract(PastDifficultyAveragePrev).divide(BigInteger.valueOf(CountBlocks)).add(PastDifficultyAveragePrev);
-
-                }
-                PastDifficultyAveragePrev = PastDifficultyAverage;
-            }
-
-            if(LastBlockTime > 0){
-                long Diff = (LastBlockTime - BlockReading.getHeader().getTimeSeconds());
-                //if(Diff < 0)
-                //   Diff = 0;
-                if(nBlockTimeCount <= PastBlocksMin) {
-                    nBlockTimeCount++;
-
-                    if (nBlockTimeCount == 1) { nBlockTimeAverage = Diff; }
-                    else { nBlockTimeAverage = ((Diff - nBlockTimeAveragePrev) / nBlockTimeCount) + nBlockTimeAveragePrev; }
-                    nBlockTimeAveragePrev = nBlockTimeAverage;
-                }
-                nBlockTimeCount2++;
-                nBlockTimeSum2 += Diff;
-            }
-            LastBlockTime = BlockReading.getHeader().getTimeSeconds();
-
-            //if (BlockReading->pprev == NULL)
-            try {
-                StoredBlock BlockReadingPrev = blockStore.get(BlockReading.getHeader().getPrevBlockHash());
-                if (BlockReadingPrev == null)
-                {
-                    //assert(BlockReading); break;
-                    return;
-                }
-                BlockReading = BlockReadingPrev;
-            }
-            catch(BlockStoreException x)
-            {
-                return;
-            }
-        }
-
-        BigInteger bnNew = PastDifficultyAverage;
-        if (nBlockTimeCount != 0 && nBlockTimeCount2 != 0) {
-            double SmartAverage = ((((double)nBlockTimeAverage)*0.7)+(((double)nBlockTimeSum2 / (double)nBlockTimeCount2)*0.3));
-            if(SmartAverage < 1) SmartAverage = 1;
-            double Shift = CoinDefinition.TARGET_SPACING/SmartAverage;
-
-            double fActualTimespan = (((double)CountBlocks*(double)CoinDefinition.TARGET_SPACING)/Shift);
-            double fTargetTimespan = ((double)CountBlocks*CoinDefinition.TARGET_SPACING);
-            if (fActualTimespan < fTargetTimespan/3)
-                fActualTimespan = fTargetTimespan/3;
-            if (fActualTimespan > fTargetTimespan*3)
-                fActualTimespan = fTargetTimespan*3;
-
-            long nActualTimespan = (long)fActualTimespan;
-            long nTargetTimespan = (long)fTargetTimespan;
-
-            // Retarget
-            bnNew = bnNew.multiply(BigInteger.valueOf(nActualTimespan));
-            bnNew = bnNew.divide(BigInteger.valueOf(nTargetTimespan));
-        }
-        verifyDifficulty(bnNew, storedPrev, nextBlock);
-
-        /*if (bnNew > bnProofOfWorkLimit){
-            bnNew = bnProofOfWorkLimit;
-        }
-
-        return bnNew.GetCompact();*/
-    }
     private void DarkGravityWave3(StoredBlock storedPrev, Block nextBlock) {
-        /* current difficulty formula, darkcoin - DarkGravity v3, written by Evan Duffield - evan@darkcoin.io */
+        /* current difficulty formula, Dash - DarkGravity v3, written by Evan Duffield - evan@bitsendpay.io */
         StoredBlock BlockLastSolved = storedPrev;
         StoredBlock BlockReading = storedPrev;
         Block BlockCreating = nextBlock;
@@ -1113,12 +943,13 @@ public abstract class AbstractBlockChain {
         // Retarget
         bnNew = bnNew.multiply(BigInteger.valueOf(nActualTimespan));
         bnNew = bnNew.divide(BigInteger.valueOf(nTargetTimespan));
+
         verifyDifficulty(bnNew, storedPrev, nextBlock);
         
     }
 
 
-    private void checkDifficultyTransitions_V1(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
+    private void BitcoinStyleRetargeting(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
         //checkState(lock.isHeldByCurrentThread());
         Block prev = storedPrev.getHeader();
 
@@ -1143,11 +974,10 @@ public abstract class AbstractBlockChain {
 
         // We need to find a block far back in the chain. It's OK that this is expensive because it only occurs every
         // two weeks after the initial block chain download.
-        long now = System.currentTimeMillis();
         StoredBlock cursor = blockStore.get(prev.getHash());
 
         int blockstogoback = params.getInterval() - 1;
-        if(storedPrev.getHeight()+1 != params.getInterval())
+        if(storedPrev.getHeight() + 1 != params.getInterval())
             blockstogoback = params.getInterval();
 
         for (int i = 0; i < blockstogoback; i++) {
@@ -1158,9 +988,6 @@ public abstract class AbstractBlockChain {
             }
             cursor = blockStore.get(cursor.getHeader().getPrevBlockHash());
         }
-        long elapsed = System.currentTimeMillis() - now;
-        if (elapsed > 50)
-            log.info("Difficulty transition traversal took {}msec", elapsed);
 
         Block blockIntervalAgo = cursor.getHeader();
         int timespan = (int) (prev.getTimeSeconds() - blockIntervalAgo.getTimeSeconds());
@@ -1175,59 +1002,43 @@ public abstract class AbstractBlockChain {
         newTarget = newTarget.multiply(BigInteger.valueOf(timespan));
         newTarget = newTarget.divide(BigInteger.valueOf(targetTimespan));
 
-        if (newTarget.compareTo(params.getMaxTarget()) > 0) {
-            log.info("Difficulty hit proof of work limit: {}", newTarget.toString(16));
-            newTarget = params.getMaxTarget();
-        }
+        verifyDifficulty(newTarget, storedPrev, nextBlock);
 
-        int accuracyBytes = (int) (nextBlock.getDifficultyTarget() >>> 24) - 3;
-        long receivedTargetCompact = nextBlock.getDifficultyTarget();
-
-        // The calculated difficulty is to a higher precision than received, so reduce here.
-        BigInteger mask = BigInteger.valueOf(0xFFFFFFL).shiftLeft(accuracyBytes * 8);
-        newTarget = newTarget.and(mask);
-        long newTargetCompact = Utils.encodeCompactBits(newTarget);
-
-        if (newTargetCompact != receivedTargetCompact)
-            throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                    newTargetCompact + " vs " + receivedTargetCompact);
     }
 
-    private void checkDifficultyTransitions_V2(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
-        final long      	BlocksTargetSpacing			= (long)(2.5 * 60); // 10 minutes
-        int         		TimeDaySeconds				= 60 * 60 * 24;
-        long				PastSecondsMin				= TimeDaySeconds / 40;
-        long				PastSecondsMax				= TimeDaySeconds * 7;
+    private void KimotoGravityWell1(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
+        final long      	BlocksTargetSpacing			= (long)(5 * 60);
+        final long   		TimeDaySeconds				= (long)(60 * 60 * 24);
+        long				PastSecondsMin				= TimeDaySeconds * (long)0.25;
+        long				PastSecondsMax				= TimeDaySeconds * (long)7;
         long				PastBlocksMin				= PastSecondsMin / BlocksTargetSpacing;   //? blocks
         long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;   //? blocks
 
-        //if(!fgw.isNativeLibraryLoaded())
-            //long start = System.currentTimeMillis();
-            KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
-            //long end1 = System.currentTimeMillis();
-            //if(kgw.isNativeLibraryLoaded())
-        //else
-            //    KimotoGravityWell_N(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
-            //long end2 = System.currentTimeMillis();
-            //if(kgw.isNativeLibraryLoaded())
-        //    KimotoGravityWell_N2(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
-        /*long end3 = System.currentTimeMillis();
-
-        long java = end1 - start;
-        long n1 = end2 - end1;
-        long n2 = end3 - end2;
-        if(i > 20)
-        {
-            j += java;
-            N += n1;
-            N2 += n2;
-            if(i != 0 && ((i % 10) == 0))
-             //log.info("KGW 10 blocks: J={}; N={} -%.0f%; N2={} -%.0f%", java, n1, ((double)(java-n1))/java*100, n2, ((double)(java-n2))/java*100);
-                 log.info("KGW {} blocks: J={}; N={} -{}%; N2={} -{}%", i-20, j, N, ((double)(j-N))/j*100, N2, ((double)(j-N2))/j*100);
-        }
-        ++i;*/
+        KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
     }
 
+    private void KimotoGravityWell2(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
+        final long      	BlocksTargetSpacing			= (long)(5 * 60);
+        final long  		TimeDaySeconds				= (long)(60 * 60 * 24);
+        long				PastSecondsMin				= TimeDaySeconds * (long)0.5;
+        long				PastSecondsMax				= TimeDaySeconds * (long)7;
+        long				PastBlocksMin				= PastSecondsMin / BlocksTargetSpacing;   //? blocks
+        long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;   //? blocks
+
+        KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+    }
+	
+    private void KimotoGravityWell3(StoredBlock storedPrev, Block nextBlock) throws BlockStoreException, VerificationException {
+        final long      	BlocksTargetSpacing			= (long)(6 * 60);
+        final long  		TimeDaySeconds				= (long)(60 * 60 * 24);
+        long				PastSecondsMin				= TimeDaySeconds * (long)0.25;
+        long				PastSecondsMax				= TimeDaySeconds * (long)7;
+        long				PastBlocksMin				= PastSecondsMin / BlocksTargetSpacing;   //? blocks
+        long				PastBlocksMax				= PastSecondsMax / BlocksTargetSpacing;   //? blocks
+
+        KimotoGravityWell(storedPrev, nextBlock, BlocksTargetSpacing, PastBlocksMin, PastBlocksMax);
+    }
+	
     private void KimotoGravityWell(StoredBlock storedPrev, Block nextBlock, long TargetBlocksSpacingSeconds, long PastBlocksMin, long PastBlocksMax)  throws BlockStoreException, VerificationException {
 	/* current difficulty formula, megacoin - kimoto gravity well */
         //const CBlockIndex  *BlockLastSolved				= pindexLast;
@@ -1265,7 +1076,7 @@ public abstract class AbstractBlockChain {
             PastDifficultyAveragePrev = PastDifficultyAverage;
 
 
-            if (BlockReading.getHeight() > 646120 && LatestBlockTime < BlockReading.getHeader().getTimeSeconds()) {
+            if (LatestBlockTime < BlockReading.getHeader().getTimeSeconds()) {
                 //eliminates the ability to go back in time
                 LatestBlockTime = BlockReading.getHeader().getTimeSeconds();
             }
@@ -1273,17 +1084,21 @@ public abstract class AbstractBlockChain {
             PastRateActualSeconds			= BlockLastSolved.getHeader().getTimeSeconds() - BlockReading.getHeader().getTimeSeconds();
             PastRateTargetSeconds			= TargetBlocksSpacingSeconds * PastBlocksMass;
             PastRateAdjustmentRatio			= 1.0f;
-            if (BlockReading.getHeight() > 646120){
+            if (BlockReading.getHeight() > 139800){
                 //this should slow down the upward difficulty change
-                if (PastRateActualSeconds < 5) { PastRateActualSeconds = 5; }
+                if (PastRateActualSeconds < 15) { PastRateActualSeconds = 15; }
             }
             else {
-                if (PastRateActualSeconds < 0) { PastRateActualSeconds = 0; }
+                if (PastRateActualSeconds < 1) { PastRateActualSeconds = 1; }
             }
             if (PastRateActualSeconds != 0 && PastRateTargetSeconds != 0) {
                 PastRateAdjustmentRatio			= (double)PastRateTargetSeconds / PastRateActualSeconds;
             }
-            EventHorizonDeviation			= 1 + (0.7084 * java.lang.Math.pow((Double.valueOf(PastBlocksMass)/Double.valueOf(28.2)), -1.228));
+            if (BlockReading.getHeight() > 102250) {
+            EventHorizonDeviation			= 1 + (0.7084 * java.lang.Math.pow((Double.valueOf(PastBlocksMass)/Double.valueOf(72)), -1.228));
+            } else {
+            EventHorizonDeviation			= 1 + (0.7084 * java.lang.Math.pow((Double.valueOf(PastBlocksMass)/Double.valueOf(144)), -1.228));	
+            }
             EventHorizonDeviationFast		= EventHorizonDeviation;
             EventHorizonDeviationSlow		= 1 / EventHorizonDeviation;
 
@@ -1317,13 +1132,17 @@ public abstract class AbstractBlockChain {
             newDifficulty = newDifficulty.divide(BigInteger.valueOf(PastRateTargetSeconds));
         }
 
-        if (newDifficulty.compareTo(params.getMaxTarget()) > 0) {
-            log.info("Difficulty hit proof of work limit: {}", newDifficulty.toString(16));
-            newDifficulty = params.getMaxTarget();
+        int nLongTimeLimit = 6 * 60 * 60; 
+
+        if (BlockReading.getHeight() > 139800){ 
+            //if ((nextBlock.getHeader().getTimeSeconds() - storedPrev.getHeader().getTimeSeconds()) > nLongTimeLimit)  //block.nTime 
+            if ((BlockCreating.getTimeSeconds() - BlockLastSolved.getHeader().getTimeSeconds()) > nLongTimeLimit)  //block.nTime 
+            {     
+                int nLongTimebnNew = 3500;
+                newDifficulty = newDifficulty.multiply(BigInteger.valueOf(nLongTimebnNew));
+            }
         }
 
-
-        //log.info("KGW-j Difficulty Calculated: {}", newDifficulty.toString(16));
         verifyDifficulty(newDifficulty, storedPrev, nextBlock);
 
     }
@@ -1368,100 +1187,9 @@ public abstract class AbstractBlockChain {
         }
         else
         {
-
-
-
-            int height = storedPrev.getHeight() + 1;
-            ///if(System.getProperty("os.name").toLowerCase().contains("windows"))
-            //{
-            if(height <= 68589)
-            {
-                long nBitsNext = nextBlock.getDifficultyTarget();
-
-                long calcDiffBits = (accuracyBytes+3) << 24;
-                calcDiffBits |= calcDiff.shiftRight(accuracyBytes*8).longValue();
-
-                double n1 = ConvertBitsToDouble(calcDiffBits);
-                double n2 = ConvertBitsToDouble(nBitsNext);
-
-
-
-
-                if(java.lang.Math.abs(n1-n2) > n1*0.2)
-                              throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                                receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-
-
-            }
-            else
-            {
-                    if (calcDiff.compareTo(receivedDifficulty) != 0)
-                        throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                                receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-            }
-
-
-
-            /*
-            if(height >= 34140)
-                {
-                    long nBitsNext = nextBlock.getDifficultyTarget();
-
-                    long calcDiffBits = (accuracyBytes+3) << 24;
-                    calcDiffBits |= calcDiff.shiftRight(accuracyBytes*8).longValue();
-
-                    double n1 = ConvertBitsToDouble(calcDiffBits);
-                    double n2 = ConvertBitsToDouble(nBitsNext);
-
-                    if(height <= 45000) {
-
-
-                        if(java.lang.Math.abs(n1-n2) > n1*0.2)
-                            throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                                    receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-
-
-                    }
-                    else if(java.lang.Math.abs(n1-n2) > n1*0.005)
-                        throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                                receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-
-                }
-                else
-                {
-                    if (calcDiff.compareTo(receivedDifficulty) != 0)
-                        throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                                receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-                }
-            */
-
-            //}
-            /*else
-            {
-
-            if(height >= 34140 && height <= 45000)
-            {
-                long nBitsNext = nextBlock.getDifficultyTarget();
-
-                long calcDiffBits = (accuracyBytes+3) << 24;
-                calcDiffBits |= calcDiff.shiftRight(accuracyBytes*8).longValue();
-
-                double n1 = ConvertBitsToDouble(calcDiffBits);
-                double n2 = ConvertBitsToDouble(nBitsNext);
-
-                if(java.lang.Math.abs(n1-n2) > n1*0.2)
-                    throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                            receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-
-            }
-            else
-            {
-                if (calcDiff.compareTo(receivedDifficulty) != 0)
-                    throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
-                            receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
-            }
-
-            }*/
+            if (calcDiff.compareTo(receivedDifficulty) != 0)
+                throw new VerificationException("Network provided difficulty bits do not match what was calculated: " +
+                        receivedDifficulty.toString(16) + " vs " + calcDiff.toString(16));
         }
     }
 
@@ -1650,3 +1378,379 @@ public abstract class AbstractBlockChain {
         previousFalsePositiveRate = 0;
     }
 }
+
+/*
+unsigned int static GetNextWorkRequired_Delta(const CBlockIndex* pindexLast, const CBlockHeader *pblock, unsigned int nFirstDeltaBlock)
+{
+    // These two variables are not used in the calculation at all, but only for logging when -debug is set, to prevent logging the same calculation repeatedly.
+    static int64_t nPrevHeight     = 0;
+    static int64_t nPrevDifficulty = 0;
+    
+    std::string sLogInfo;
+
+    // The spacing we want our blocks to come in at.
+    int64_t nRetargetTimespan = nTargetSpacing;
+
+    // The minimum difficulty that is allowed, this is set on a per algorithm basis.
+    //const unsigned int nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
+  //  const unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit().GetCompact();
+
+
+    // How many blocks to use to calculate each of the four algo specific time windows (last block; short window; middle window; long window)
+    const unsigned int nLastBlock           =   1;
+    const unsigned int nShortFrame          =   3;
+    const unsigned int nMiddleFrame         =  24;
+    const unsigned int nLongFrame           = 576;
+
+    // How many blocks to use for the fifth window, fifth window is across all algorithms.
+    #ifdef MULTI_ALGO
+    const unsigned int nDayFrame            = 576;
+    #endif
+
+    // Weighting to use for each of the four algo specific time windows.
+    const int64_t nLBWeight        =  64;
+    const int64_t nShortWeight     =  8;
+    int64_t nMiddleWeight          =  2;
+    int64_t nLongWeight            =  1;
+
+    // Minimum and maximum threshold for the last block, if it exceeds these thresholds then favour a larger swing in difficulty.
+    const int64_t nLBMinGap        = nRetargetTimespan / 6;
+    const int64_t nLBMaxGap        = nRetargetTimespan * 6;
+    
+    // Minimum threshold for the short window, if it exceeds these thresholds then favour a larger swing in difficulty.
+    const int64_t nQBFrame         = nShortFrame + 1;
+    const int64_t nQBMinGap        = (nRetargetTimespan / 1.2) * nQBFrame;
+
+    // Any block with a time lower than nBadTimeLimit is considered to have a 'bad' time, the time is replaced with the value of nBadTimeReplace.
+    const int64_t nBadTimeLimit    = 0;
+    const int64_t nBadTimeReplace  = nRetargetTimespan / 10;
+    
+    // Used for 'exception 1' (see code below), if block is lower than 'nLowTimeLimit' then prevent the algorithm from decreasing difficulty any further.
+    // If block is lower than 'nFloorTimeLimit' then impose a minor increase in difficulty.
+    // This helps to prevent the algorithm from generating and giving away too many sudden/easy 'quick blocks' after a long block or two have occured, and instead forces things to be recovered more gently over time without intefering with other desirable properties of the algorithm.
+    const int64_t nLowTimeLimit    = nRetargetTimespan * 0.9;
+    const int64_t nFloorTimeLimit  = nRetargetTimespan * 0.65;
+    
+    // Used for 'exception 2' (see code below), if a block has taken longer than nLongTimeLimit we perform a difficulty reduction by taking the original difficulty and dividing by nLongTimeStep
+    // NB!!! nLongTimeLimit MUST ALWAYS EXCEED THE THE MAXIMUM DRIFT ALLOWED (IN BOTH THE POSITIVE AND NEGATIVE DIRECTION)
+    // SO AT LEAST DRIFT X2 OR MORE - OR ELSE CLIENTS CAN FORCE LOW DIFFICULTY BLOCKS BY MESSING WITH THE BLOCK TIMES.
+    const int64_t nLongTimeLimit   = 2 * 16 * 60;
+    const int64_t nLongTimeStep    = 15 * 60;
+
+    // Limit adjustment amount to try prevent jumping too far in either direction.
+    // The same limits as DIGI difficulty algorithm are used.
+    // min 75% of default time; 33.3% difficulty increase
+    unsigned int nMinimumAdjustLimit = nRetargetTimespan * 0.75;
+    // max 150% of default time; 33.3% difficuly decrease
+    unsigned int nMaximumAdjustLimit = nRetargetTimespan * 1.5;
+    
+    // Variables used in calculation
+    int64_t nDeltaTimespan         = 0;
+    int64_t nLBTimespan            = 0;
+    int64_t nShortTimespan         = 0;
+    int64_t nMiddleTimespan        = 0;
+    int64_t nLongTimespan          = 0;
+    int64_t nQBTimespan            = 0;
+    #ifdef MULTI_ALGO
+    int64_t nDayTimespan           = 0;
+    #endif
+
+    int64_t nWeightedSum           = 0;
+    int64_t nWeightedDiv           = 0;
+    int64_t nWeightedTimespan      = 0;
+    #ifdef MULTI_ALGO
+    int64_t nDailyPercentage       = 0;
+    #endif
+
+    const CBlockIndex* pindexFirst = pindexLast; //multi algo - last block is selected on a per algo basis.
+
+    // Genesis block
+    if (pindexLast == NULL)
+        return Params().ProofOfWorkLimit().GetCompact();//return nProofOfWorkLimit;
+
+    // -- Use a fixed difficuly until we have enough blocks to work with (multi algo - this is calculated on a per algo basis)
+    if (pindexLast->nHeight <= nQBFrame)
+        return Params().ProofOfWorkLimit().GetCompact();//return nProofOfWorkLimit; 
+
+    // -- Calculate timespan for last block window (multi algo - this is calculated on a per algo basis)
+    pindexFirst = pindexLast->pprev;
+    nLBTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+   
+    // Check for very short and long blocks (algo specific)
+    // If last block was far too short, let difficulty raise faster
+    // by cutting 50% of last block time
+    if (nLBTimespan > nBadTimeLimit && nLBTimespan < nLBMinGap)
+        nLBTimespan *= 0.5;
+    // Prevent bad/negative block times - switch them for a fixed time.
+    if (nLBTimespan <= nBadTimeLimit)
+        nLBTimespan = nBadTimeReplace;
+    // If last block took far too long, let difficulty drop faster
+    // by adding 50% of last block time
+    if (nLBTimespan > nLBMaxGap)
+        nLBTimespan *= 1.5;
+
+
+    // -- Calculate timespan for short window (multi algo - this is calculated on a per algo basis)
+    pindexFirst = pindexLast;
+    for (unsigned int i = 1; pindexFirst && i <= nQBFrame; i++)
+    {
+        nDeltaTimespan = pindexFirst->GetBlockTime() - pindexFirst->pprev->GetBlockTime();
+        // Prevent bad/negative block times - switch them for a fixed time.
+        if (nDeltaTimespan <= nBadTimeLimit)
+            nDeltaTimespan = nBadTimeReplace;
+
+        if (i<= nShortFrame)
+            nShortTimespan += nDeltaTimespan;
+        nQBTimespan += nDeltaTimespan;
+        pindexFirst = pindexFirst->pprev;
+    }
+       
+    // -- Calculate time interval for middle window (multi algo - this is calculated on a per algo basis)
+    if (pindexLast->nHeight - nFirstDeltaBlock <= nMiddleFrame)
+    {
+        nMiddleWeight = nMiddleTimespan = 0;
+    }
+    else
+    {
+        pindexFirst = pindexLast;
+        for (unsigned int i = 1; pindexFirst && i <= nMiddleFrame; i++)
+        {
+            nDeltaTimespan = pindexFirst->GetBlockTime() - pindexFirst->pprev->GetBlockTime();
+            // Prevent bad/negative block times - switch them for a fixed time.
+            if (nDeltaTimespan <= nBadTimeLimit)
+                nDeltaTimespan = nBadTimeReplace;
+
+            nMiddleTimespan += nDeltaTimespan;
+            pindexFirst = pindexFirst->pprev;
+        }
+    }
+
+
+    // -- Calculate timespan for long window (multi algo - this is calculated on a per algo basis)
+    // NB! No need to worry about single negative block times as it has no significant influence over this many blocks.
+    if (pindexLast->nHeight - nFirstDeltaBlock <= nLongFrame)
+    {
+        nLongWeight = nLongTimespan = 0;
+    }
+    else
+    {
+        pindexFirst = pindexLast;
+        for (unsigned int i = 1; pindexFirst && i <= nLongFrame; i++)
+            pindexFirst = pindexFirst->pprev;
+
+        nLongTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+    }
+
+
+    // Check for multiple very short blocks (algo specific)
+    // If last few blocks were far too short, and current block is still short, then calculate difficulty based on short blocks alone.
+    if ( (nQBTimespan > nBadTimeLimit) && (nQBTimespan < nQBMinGap) && (nLBTimespan < nRetargetTimespan * 0.8) )
+    {
+        if (fDebug && (nPrevHeight != pindexLast->nHeight) )
+            sLogInfo += "<DELTA> Multiple fast blocks - ignoring long and medium weightings.\n";
+        nMiddleWeight = nMiddleTimespan = nLongWeight = nLongTimespan = 0;
+    }
+    
+    // -- Combine all the timespans and weights to get a weighted timespan
+    nWeightedSum      = (nLBTimespan * nLBWeight) + (nShortTimespan * nShortWeight);
+    nWeightedSum     += (nMiddleTimespan * nMiddleWeight) + (nLongTimespan * nLongWeight);
+    nWeightedDiv      = (nLastBlock * nLBWeight) + (nShortFrame * nShortWeight);
+    nWeightedDiv     += (nMiddleFrame * nMiddleWeight) + (nLongFrame * nLongWeight);
+    nWeightedTimespan = nWeightedSum / nWeightedDiv;
+    
+
+    // Apply the adjustment limits
+    // However if we are close to target time then we use smaller limits to smooth things off a little bit more.
+    if (std::abs(nLBTimespan - nRetargetTimespan) < nRetargetTimespan * 0.1)
+    {
+        // 90% of target
+        // 11.11111111111111% difficulty increase
+        // 10% difficulty decrease.
+        nMinimumAdjustLimit = nRetargetTimespan * 0.9;
+        nMaximumAdjustLimit = nRetargetTimespan * 1.1;
+    }
+    else if (std::abs(nLBTimespan - nRetargetTimespan) < nRetargetTimespan * 0.2)
+    {
+        // 80% of target - 25% difficulty increase/decrease maximum.
+        nMinimumAdjustLimit = nRetargetTimespan * 0.8;
+        nMaximumAdjustLimit = nRetargetTimespan * 1.2;
+    }
+    
+    // min
+    if (nWeightedTimespan < nMinimumAdjustLimit)
+        nWeightedTimespan = nMinimumAdjustLimit;
+    // max
+    if (nWeightedTimespan > nMaximumAdjustLimit)
+        nWeightedTimespan = nMaximumAdjustLimit;
+
+
+    #ifdef MULTI_ALGO
+    // -- Day interval (1 day; general over all algos)
+    // so other algos can take blocks that 1 algo does not use
+    // in case there are still longer gaps (high spikes)
+    if (pindexLast->nHeight <= nDayFrame)
+    {
+        nDayTimespan = nRetargetTimespan * nDayFrame;
+    }
+    else
+    {
+        pindexFirst = pindexLast;
+        for (int i = 1; pindexFirst && i <= nDayFrame; i++)
+            pindexFirst = pindexFirst->pprev;
+
+        nDayTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+    }
+    nDailyPercentage = (nDayTimespan * PERCENT_FACTOR) / (nRetargetTimespan * nDayFrame);
+
+    // Limit day interval adjustment to 10%
+    if (nDailyPercentage > 110)
+        nDailyPercentage = 110;
+    if (nDailyPercentage <  90)
+        nDailyPercentage =  90;
+
+
+    // Adjust Time based on day interval
+    nWeightedTimespan *= nDailyPercentage;
+    nWeightedTimespan /= PERCENT_FACTOR;
+    #endif
+
+    
+    // Finally calculate and set the new difficulty.
+    CBigNum bnNew;
+    bnNew.SetCompact(pindexLast->nBits);
+    bnNew *= nWeightedTimespan;
+    bnNew /= nRetargetTimespan;
+
+    
+    // Now that we have the difficulty we run a last few 'special purpose' exception rules which have the ability to override the calculation.
+    // Exception 1 - Never adjust difficulty downward (human view) if previous block generation was faster than what we wanted.
+    nLBTimespan = pindexLast->GetBlockTime() - pindexLast->pprev->GetBlockTime();
+    if (nLBTimespan > 0 && nLBTimespan < nLowTimeLimit && bnNew > CBigNum().SetCompact(pindexLast->nBits))
+    {
+        // If it is this low then we actually give it a slight nudge upwards - 5%
+        if (nLBTimespan < nFloorTimeLimit)
+        {
+            bnNew.SetCompact(pindexLast->nBits);
+            bnNew *= 95;
+            bnNew /= PERCENT_FACTOR;
+            if (fDebug && (nPrevHeight != pindexLast->nHeight) )
+                sLogInfo +=  strprintf("<DELTA> Last block time [%ld] was far below target but adjustment still downward, forcing difficulty up by 5%% instead\n", (long int)nLBTimespan);
+        }
+        else
+        {
+            bnNew.SetCompact(pindexLast->nBits);
+            if (fDebug && (nPrevHeight != pindexLast->nHeight) )
+                sLogInfo += strprintf("<DELTA> Last block time [%ld] below target but adjustment still downward, blocking downward adjustment\n", (long int)nLBTimespan);
+        }
+    }
+
+    
+    // Exception 2 - Reduce difficulty if current block generation time has already exceeded maximum time limit. (NB! nLongTimeLimit must exceed maximum possible drift in both positive and negative direction)
+    if ((pblock-> nTime - pindexLast->GetBlockTime()) > nLongTimeLimit)  //block.nTime 
+    {
+        // Reduce in a linear fashion at first, and then start to ramp up with a gradual exponential curve (to catch massive hash extinction events)
+        int64_t nNumMissedSteps = ((pblock-> nTime - pindexLast->GetBlockTime()) / nLongTimeStep);
+        if (nNumMissedSteps <= 12)
+            bnNew *=  nNumMissedSteps;
+        else
+            bnNew *=  12 + (int64_t)std::floor(std::pow((float)1.14, (float)nNumMissedSteps - 12) + 0.5);
+	
+        if (fDebug && (nPrevHeight != pindexLast->nHeight ||  bnNew.GetCompact() != nPrevDifficulty) )
+            sLogInfo +=  strprintf("<DELTA> Maximum block time hit - halving difficulty %08x %s\n", bnNew.GetCompact(), bnNew.ToString().c_str());
+    }
+
+    
+    // Exception 3 - Difficulty should never go below (human view) the starting difficulty, so if it has we force it back to the limit.
+    if (bnNew > Params().ProofOfWorkLimit())
+        bnNew = Params().ProofOfWorkLimit();  //bnProofOfWorkLimit
+
+    
+    if (fDebug)
+    {
+        if (nPrevHeight != pindexLast->nHeight ||  bnNew.GetCompact() != nPrevDifficulty)
+        {
+            static CCriticalSection logCS;
+	    LOCK(logCS);
+            printf("<DELTA> Height= %d\n" , pindexLast->nHeight);
+	    printf("%s" , sLogInfo.c_str());
+            printf("<DELTA> nTargetTimespan = %ld nActualTimespan = %ld nWeightedTimespan = %ld \n", (long int)nRetargetTimespan, (long int)nLBTimespan, (long int)nWeightedTimespan);
+            printf("<DELTA> nShortTimespan/nShortFrame = %ld nMiddleTimespan/nMiddleFrame = %ld nLongTimespan/nLongFrame = %ld \n", (long int)(nShortTimespan/nShortFrame), (long int)(nMiddleTimespan/nMiddleFrame), (long int)(nLongTimespan/nLongFrame));
+            printf("<DELTA> Before: %08x %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).ToString().c_str());
+            printf("<DELTA> After:  %08x %s\n", bnNew.GetCompact(), bnNew.ToString().c_str());
+            printf("<DELTA> Rough change percentage (human view): %lf%%\n", -( ( (bnNew.getuint256().getdouble() - CBigNum().SetCompact(pindexLast->nBits).getuint256().getdouble()) / CBigNum().SetCompact(pindexLast->nBits).getuint256().getdouble()) * 100) );
+        }
+        nPrevHeight = pindexLast->nHeight;
+        nPrevDifficulty = bnNew.GetCompact();
+    }
+
+    // Difficulty is returned in compact form.
+    return bnNew.GetCompact();
+}
+*/
+
+
+/*
+
+        if (retarget == DIFF_BTC)
+        {
+            unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit().GetCompact();
+            // Genesis block
+            if (pindexLast == NULL)
+                return nProofOfWorkLimit;
+            // Only change once per interval
+            if ((pindexLast->nHeight+1) % nInterval != 0)
+            {
+                // Special difficulty rule for testnet:
+                if (TestNet())
+                {
+                    // If the new block's timestamp is more than 2* 10 minutes
+                    // then allow mining of a min-difficulty block.
+                    if (pblock->nTime > pindexLast->nTime + nTargetSpacing*2)
+                        return nProofOfWorkLimit;
+                    else
+                    {
+                        // Return the last non-special-min-difficulty-rules-block
+                        const CBlockIndex* pindex = pindexLast;
+                        while (pindex->pprev && pindex->nHeight % nInterval != 0 && pindex->nBits == nProofOfWorkLimit)
+                            pindex = pindex->pprev;
+                        return pindex->nBits;
+                    }
+                }
+                return pindexLast->nBits;
+            }
+	 // Bitsend: This fixes an issue where a 51% attack can change difficulty at will.
+            // Go back the full period unless it's the first retarget after genesis.
+            // Code courtesy of Art Forz.
+            int blockstogoback = nInterval-1;
+            if ((pindexLast->nHeight+1) != nInterval)
+                blockstogoback = nInterval;
+            // Go back by what we want to be 14 days worth of blocks
+            const CBlockIndex* pindexFirst = pindexLast;
+            for (int i = 0; pindexFirst && i < blockstogoback; i++)
+                pindexFirst = pindexFirst->pprev;
+            assert(pindexFirst);
+            // Limit adjustment step
+            int64_t nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
+            LogPrintf("  nActualTimespan = %d  before bounds\n", nActualTimespan);
+            if (nActualTimespan < nTargetTimespan/4)
+                nActualTimespan = nTargetTimespan/4;
+            if (nActualTimespan > nTargetTimespan*4)
+                nActualTimespan = nTargetTimespan*4;
+            // Retarget
+            CBigNum bnNew;
+            bnNew.SetCompact(pindexLast->nBits);
+            bnNew *= nActualTimespan;
+            bnNew /= nTargetTimespan;
+            if (bnNew > Params().ProofOfWorkLimit())
+                bnNew = Params().ProofOfWorkLimit();
+            /// debug print
+            LogPrintf("GetNextWorkRequired RETARGET\n");
+            LogPrintf("nTargetTimespan = %d    nActualTimespan = %d\n", nTargetTimespan, nActualTimespan);
+            LogPrintf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString());
+            LogPrintf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString());
+
+            return bnNew.GetCompact();
+// OLD BTC Function END
+        }
+
+*/

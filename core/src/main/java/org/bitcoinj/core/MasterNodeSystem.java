@@ -2,10 +2,10 @@ package org.bitcoinj.core;
 
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
-import org.darkcoinj.ActiveMasterNode;
-import org.darkcoinj.DarkSendSigner;
-import org.darkcoinj.MasterNode;
-import org.darkcoinj.MasterNodePayments;
+import org.bitsendj.ActiveMasterNode;
+import org.bitsendj.DarkSendSigner;
+import org.bitsendj.MasterNode;
+import org.bitsendj.MasterNodePayments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

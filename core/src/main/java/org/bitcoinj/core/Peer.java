@@ -29,7 +29,7 @@ import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
 import org.bitcoinj.utils.ListenerRegistration;
 import org.bitcoinj.utils.Threading;
-import org.darkcoinj.InstantXSystem;
+import org.bitsendj.InstantXSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

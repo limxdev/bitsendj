@@ -15,9 +15,9 @@
  */
 package org.bitcoinj.core;
 
-import org.darkcoinj.DarkSend;
-import org.darkcoinj.DarkSendSigner;
-import org.darkcoinj.MasterNode;
+import org.bitsendj.DarkSend;
+import org.bitsendj.DarkSendSigner;
+import org.bitsendj.MasterNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

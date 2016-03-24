@@ -1,4 +1,4 @@
-package org.darkcoinj;
+package org.bitsendj;
 
 import org.bitcoinj.core.*;
 import org.slf4j.Logger;

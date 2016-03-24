@@ -1,4 +1,4 @@
-package org.darkcoinj;
+package org.bitsendj;
 
 import org.bitcoinj.core.DarkSendQueue;
 import org.bitcoinj.core.Sha256Hash;

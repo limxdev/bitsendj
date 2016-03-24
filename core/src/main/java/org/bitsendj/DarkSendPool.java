@@ -1,4 +1,4 @@
-package org.darkcoinj;
+package org.bitsendj;
 
 import org.bitcoinj.core.*;
 import org.bitcoinj.script.Script;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
  */
 public class DarkSendPool {
     private static final Logger log = LoggerFactory.getLogger(DarkSendPool.class);
-    static final int MIN_PEER_PROTO_VERSION = 70054;
+    static final int MIN_PEER_PROTO_VERSION = 70077;
 
     // clients entries
     ArrayList<DarkSendEntry> myEntries;

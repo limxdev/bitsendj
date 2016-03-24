@@ -1,4 +1,4 @@
-package org.darkcoinj;
+package org.bitsendj;
 
 import org.bitcoinj.core.*;
 import org.slf4j.Logger;
@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public class InstantXSystem {
     private static final Logger log = LoggerFactory.getLogger(InstantXSystem.class);
-    public static final int MIN_INSTANTX_PROTO_VERSION = 70047;
+    public static final int MIN_INSTANTX_PROTO_VERSION = 70077;
 
     public HashMap<Sha256Hash, Transaction> mapTxLockReq;
     public HashMap<Sha256Hash, Transaction> mapTxLockReqRejected;

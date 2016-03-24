@@ -20,15 +20,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>org.bitcoinj</groupId>
-    <artifactId>darkcoinj-parent</artifactId>
+    <artifactId>bitsendj-parent</artifactId>
     <version>0.13.2.ix</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>darkcoinj-tools</artifactId>
+  <artifactId>bitsendj-tools</artifactId>
 
-  <name>darkcoinj Tools</name>
-  <description>A collection of useful tools that use the darkcoinj library to perform wallet operations</description>
+  <name>bitsendj Tools</name>
+  <description>A collection of useful tools that use the bitsendj library to perform wallet operations</description>
 
   <build>
 
@@ -75,7 +75,7 @@
   <dependencies>
     <dependency>
       <groupId>org.bitcoinj</groupId>
-      <artifactId>darkcoinj-core</artifactId>
+      <artifactId>bitsendj-core</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>

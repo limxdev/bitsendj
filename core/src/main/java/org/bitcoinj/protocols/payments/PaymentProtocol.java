@@ -48,9 +48,9 @@ import java.util.List;
 public class PaymentProtocol {
 
     // MIME types as defined in BIP71.
-    public static final String MIMETYPE_PAYMENTREQUEST = "application/dash-paymentrequest";
-    public static final String MIMETYPE_PAYMENT = "application/dash-payment";
-    public static final String MIMETYPE_PAYMENTACK = "application/dash-paymentack";
+    public static final String MIMETYPE_PAYMENTREQUEST = "application/bitsend-paymentrequest";
+    public static final String MIMETYPE_PAYMENT = "application/bitsend-payment";
+    public static final String MIMETYPE_PAYMENTACK = "application/bitsend-paymentack";
 
     /**
      * Create a payment request with one standard pay to address output. You may want to sign the request using

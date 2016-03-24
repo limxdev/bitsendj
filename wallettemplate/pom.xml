@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.bitcoinj</groupId>
-        <artifactId>darkcoinj-parent</artifactId>
+        <artifactId>bitsendj-parent</artifactId>
         <version>0.13.2.ix</version>
     </parent>
 
-    <groupId>org.darkcoinj</groupId>
+    <groupId>org.bitsendj</groupId>
     <artifactId>wallettemplate</artifactId>
 
     <name>bitcoinj Wallet-Template</name>
@@ -58,7 +58,7 @@
     <dependencies>
         <dependency>
             <groupId>org.bitcoinj</groupId>
-            <artifactId>darkcoinj-core</artifactId>
+            <artifactId>bitsendj-core</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>

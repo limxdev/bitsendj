@@ -54,6 +54,10 @@ public class BuildCheckpoints {
     public static void main(String[] args) throws Exception {
         BriefLogFormatter.initWithSilentBitcoinJ();
 
+		final InetAddress ipAddress;
+		ipAddress = InetAddress.getLocalHost();
+		final PeerAddress peerAddress = new PeerAddress(ipAddress);
+		
         // Sorted map of block height to StoredBlock object.
         final TreeMap<Integer, StoredBlock> checkpoints = new TreeMap<Integer, StoredBlock>();
 
@@ -62,8 +66,8 @@ public class BuildCheckpoints {
         final BlockStore store = new MemoryBlockStore(PARAMS);
         final BlockChain chain = new BlockChain(PARAMS, store);
         final PeerGroup peerGroup = new PeerGroup(PARAMS, chain);
-        peerGroup.addAddress(InetAddress.getByName("188.226.228.88"));
-        final InetAddress peerAddress = InetAddress.getLocalHost();
+        /*peerGroup.addAddress(InetAddress.getByName("85.214.68.75"));
+        final InetAddress peerAddress = InetAddress.getLocalHost();*/
         System.out.println("Connecting to " + peerAddress + "...");
         peerGroup.addAddress(peerAddress);
         long now = new Date().getTime() / 1000;

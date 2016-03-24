@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.bitcoinj</groupId>
-  <artifactId>darkcoinj-parent</artifactId>
+  <artifactId>bitsendj-parent</artifactId>
   <version>0.13.2.ix</version>
   <packaging>pom</packaging>
 
@@ -22,13 +22,13 @@
 
 
   <scm>
-    <connection>scm:git:https://github.com/HashEngineering/darkcoinj</connection>
-    <developerConnection>scm:git:https://github.com/HashEngineering/darkcoinj</developerConnection>
-    <url>scm:git:https://github.com/bitcoinj/darkcoinj</url>
+    <connection>scm:git:https://github.com/LIMXTEC/bitsendj</connection>
+    <developerConnection>scm:git:https://github.com/LIMXTEC/bitsendj</developerConnection>
+    <url>scm:git:https://github.com/bitcoinj/bitcoinj</url>
   </scm>
 
-  <name>darkcoinj Parent</name>
-  <description>Provides the common configuration for the darkcoinj modules</description>
+  <name>bitsendj Parent</name>
+  <description>Provides the common configuration for the bitsendj modules</description>
   <url>http://www.bitcoinj.org/</url>
 
   <licenses>
@@ -42,13 +42,13 @@
 
   <issueManagement>
     <system>Google Code</system>
-    <url>http://code.google.com/p/darkcoinj/issues/list</url>
+    <url>http://code.google.com/p/bitcoinj/issues/list</url>
   </issueManagement>
 
   <mailingLists>
     <mailingList>
-      <name>darkcoinj Google Group</name>
-      <post>https://groups.google.com/forum/#!forum/darkcoinj</post>
+      <name>bitcoinj Google Group</name>
+      <post>https://groups.google.com/forum/#!forum/bitcoinj</post>
     </mailingList>
   </mailingLists>
 
@@ -159,7 +159,7 @@
         <artifactId>slf4j-api</artifactId>
         <version>1.7.7</version>
       </dependency>
-      <!-- darkcoinj consumers are expected to provide their own SLF4J adapters
+      <!-- bitsendj consumers are expected to provide their own SLF4J adapters
     such as logback, slf4j-log4j12, slf4j-jcl and so on
     see http://www.slf4j.org/faq.html -->
       <dependency>

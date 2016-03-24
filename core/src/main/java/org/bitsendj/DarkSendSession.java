@@ -1,4 +1,4 @@
-package org.darkcoinj;
+package org.bitsendj;
 
 /**
  * Created by Eric on 2/8/2015.
