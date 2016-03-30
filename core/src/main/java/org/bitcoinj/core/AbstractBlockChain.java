@@ -358,6 +358,9 @@ public abstract class AbstractBlockChain {
         try {
             // Quick check for duplicates to avoid an expensive check further down (in findSplit). This can happen a lot
             // when connecting orphan transactions due to the dumb brute force algorithm we use.
+            if{storedPrev.getHeight() + 1 >= 150000) {
+            	// Bitsend 30.03.2016 
+            
             if (block.equals(getChainHead().getHeader())) {
                 return true;
             }
@@ -418,7 +421,8 @@ public abstract class AbstractBlockChain {
 
             if (tryConnecting)
                 tryConnectingOrphans();
-
+        }
+// End BitSenddev 30.03.2016
             return true;
         } finally {
             lock.unlock();
